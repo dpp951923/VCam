@@ -22,6 +22,9 @@ static char g_vcamDelegateProxyKey;
 
 - (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
     UIView *hit = [super hitTest:point withEvent:event];
+    if (self.rootViewController.presentedViewController) {
+        return hit;
+    }
     UIView *view = hit;
 
     while (view && view != self) {
