@@ -188,7 +188,44 @@ static void handleTapGesture(UITapGestureRecognizer *gesture) {
 // ============================================================================
 // MARK: - Hook AVCaptureSession / Video Output
 // ============================================================================
+@interface VCamVideoDelegateProxy : NSObject <AVCaptureVideoDataOutputSampleBufferDelegate>
+@property (nonatomic, weak) id<AVCaptureVideoDataOutputSampleBufferDelegate> originalDelegate;
+@end
 
+@implementation VCamVideoDelegateProxy
+
+- (void)captureOutput:(AVCaptureOutput *)output
+didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
+       fromConnection:(AVCaptureConnection *)connection {
+    id<AVCaptureVideoDataOutputSampleBufferDelegate> original = self.originalDelegate;
+    if (![original respondsToSelector:@selector(captureOutput:didOutputSampleBuffer:fromConnection:)]) {
+        return;
+    }
+
+    CMSampleBufferRef fakeFrame = NULL;
+    if (g_vcamEnabled && [MediaManager sharedManager].isRunning) {
+        fakeFrame = [[MediaManager sharedManager] nextVideoFrame];
+    }
+
+    [original captureOutput:output
+      didOutputSampleBuffer:(fakeFrame ? fakeFrame : sampleBuffer)
+             fromConnection:connection];
+
+    if (fakeFrame) CFRelease(fakeFrame);
+}
+
+- (void)captureOutput:(AVCaptureOutput *)output
+didDropSampleBuffer:(CMSampleBufferRef)sampleBuffer
+       fromConnection:(AVCaptureConnection *)connection {
+    id<AVCaptureVideoDataOutputSampleBufferDelegate> original = self.originalDelegate;
+    if ([original respondsToSelector:@selector(captureOutput:didDropSampleBuffer:fromConnection:)]) {
+        [original captureOutput:output
+            didDropSampleBuffer:sampleBuffer
+                 fromConnection:connection];
+    }
+}
+
+@end
 %group VCamHooks
 
 %hook AVCaptureSession
