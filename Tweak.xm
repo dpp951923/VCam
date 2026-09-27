@@ -2,8 +2,8 @@
 #import <AVFoundation/AVFoundation.h>
 #import <CoreMedia/CoreMedia.h>
 #import <substrate.h>
+#import <objc/runtime.h>
 #import "MediaManager.h"
-
 // ============================================================================
 // MARK: - 全局状态
 // ============================================================================
@@ -11,7 +11,7 @@
 static BOOL g_vcamEnabled = NO;
 static UIWindow *g_overlayWindow = nil;
 static UIButton *g_floatButton = nil;
-
+static char g_vcamDelegateProxyKey;
 // ============================================================================
 // MARK: - 悬浮按钮 UI
 // ============================================================================
@@ -238,28 +238,23 @@ didDropSampleBuffer:(CMSampleBufferRef)sampleBuffer
 %end
 
 %hook AVCaptureVideoDataOutput
-- (void)setSampleBufferDelegate:(id<AVCaptureVideoDataOutputSampleBufferDelegate>)delegate 
-                          queue:(dispatch_queue_t)queue {
-    %orig;
-}
-%end
 
-// Intercept frame delegate callback -> substitute with fake frames
-%hook NSObject
-- (void)captureOutput:(AVCaptureOutput *)output 
-    didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer 
-           fromConnection:(AVCaptureConnection *)connection {
-    
-    if (g_vcamEnabled && [[MediaManager sharedManager] isRunning]) {
-        CMSampleBufferRef fakeFrame = [[MediaManager sharedManager] nextVideoFrame];
-        if (fakeFrame) {
-            %orig(output, fakeFrame, connection);
-            CFRelease(fakeFrame);
-            return;
-        }
+- (void)setSampleBufferDelegate:(id<AVCaptureVideoDataOutputSampleBufferDelegate>)delegate
+                          queue:(dispatch_queue_t)queue {
+    if (!delegate) {
+        objc_setAssociatedObject(self, &g_vcamDelegateProxyKey, nil,
+                                 OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        %orig(nil, queue);
+        return;
     }
-    %orig;
+
+    VCamVideoDelegateProxy *proxy = [[VCamVideoDelegateProxy alloc] init];
+    proxy.originalDelegate = delegate;
+    objc_setAssociatedObject(self, &g_vcamDelegateProxyKey, proxy,
+                             OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    %orig(proxy, queue);
 }
+
 %end
 
 %hook AVCapturePhotoOutput
