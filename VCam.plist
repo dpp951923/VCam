@@ -4,14 +4,11 @@
 <dict>
 	<key>Filter</key>
 	<dict>
-		<key>Bundles</key>
-		<array>
-			<string>com.apple.UIKit</string>
-		</array>
-		<key>Executables</key>
-		<array>
-			<string>SpringBoard</string>
-		</array>
+	    <key>Bundles</key>
+	    <array>
+	        <string>com.apple.camera</string>
+	        <string>com.atebits.Tweetie2</string>
+	    </array>
 	</dict>
 </dict>
 </plist>
