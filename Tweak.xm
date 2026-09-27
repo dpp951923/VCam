@@ -15,6 +15,26 @@ static char g_vcamDelegateProxyKey;
 // ============================================================================
 // MARK: - 悬浮按钮 UI
 // ============================================================================
+@interface VCamPassthroughWindow : UIWindow
+@end
+
+@implementation VCamPassthroughWindow
+
+- (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
+    UIView *hit = [super hitTest:point withEvent:event];
+    UIView *view = hit;
+
+    while (view && view != self) {
+        if (view == g_floatButton) {
+            return hit;
+        }
+        view = view.superview;
+    }
+
+    return nil;
+}
+
+@end
 
 @interface VCamFloatButton : UIButton
 @property (nonatomic, assign) CGPoint initialCenter;
@@ -55,7 +75,7 @@ static void setupFloatButton() {
         initWithTarget:g_floatButton action:@selector(handleTap:)];
     [g_floatButton addGestureRecognizer:tap];
     
-    g_overlayWindow = [[UIWindow alloc] initWithFrame:screen];
+    g_overlayWindow = [[VCamPassthroughWindow alloc] initWithFrame:screen];
     g_overlayWindow.windowLevel = UIWindowLevelAlert + 100;
     g_overlayWindow.hidden = NO;
     g_overlayWindow.backgroundColor = [UIColor clearColor];
